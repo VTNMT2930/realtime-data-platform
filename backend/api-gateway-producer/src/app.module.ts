@@ -15,11 +15,11 @@ import { ProducersModule } from './producers/producers.module';
     // --- 1. Cấu hình Database (PostgreSQL) ---
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5433,
-      username: 'admin',
-      password: 'admin',
-      database: 'producer_logs',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5433'),
+      username: process.env.DB_USERNAME || 'admin',
+      password: process.env.DB_PASSWORD || 'admin',
+      database: process.env.DB_PRODUCER_NAME || 'producer_logs',
 
       // Tự động tìm tất cả các file .entity.ts (như producer-log.entity.ts)
       entities: [join(__dirname, '**', '*.entity.{ts,js}')],
@@ -31,8 +31,8 @@ import { ProducersModule } from './producers/producers.module';
     // --- 2. Cấu hình Bull (Redis Queue) ---
     BullModule.forRoot({
       redis: {
-        host: 'localhost',
-        port: 6379,
+        host: process.env.REDIS_HOST || 'localhost', // Sửa từ 'localhost'
+        port: parseInt(process.env.REDIS_PORT || '6379'),
       },
     }),
 
