@@ -6,15 +6,17 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     // Đăng ký client để kết nối Kafka
     ClientsModule.register([
       {
-        name: 'KAFKA_SERVICE', // Tên service
+        name: 'KAFKA_SERVICE', // Tên bạn dùng
         transport: Transport.KAFKA,
         options: {
           client: {
-            clientId: 'producer',
-            brokers: ['localhost:9092'], // Địa chỉ Kafka đang chạy từ Docker
-          },
-          producer: {
-            allowAutoTopicCreation: true,
+            brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
+            ssl: true,
+            sasl: {
+              mechanism: 'scram-sha-256',
+              username: process.env.KAFKA_USERNAME || '',
+              password: process.env.KAFKA_PASSWORD || '',
+            },
           },
         },
       },
