@@ -9,7 +9,6 @@ RUN npm install
 COPY backend/api-gateway-producer/ ./
 # Build ứng dụng NestJS
 RUN npm run build
-
 # Giai đoạn 2: Production
 FROM node:18-alpine
 WORKDIR /app
