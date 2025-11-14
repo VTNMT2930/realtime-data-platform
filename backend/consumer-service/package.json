@@ -1,0 +1,40 @@
+{
+  "dependencies": {
+    "@nestjs/axios": "^4.0.1",
+    "@nestjs/common": "^11.1.8",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.8",
+    "@nestjs/microservices": "^11.1.8",
+    "@nestjs/platform-express": "^11.1.8",
+    "@nestjs/platform-socket.io": "^11.1.8",
+    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.8",
+    "axios": "^1.13.1",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1",
+    "typeorm": "^0.3.27"
+  },
+  "name": "consumer-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "build": "nest build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "ts-loader": "^9.5.4",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
+  }
+}
