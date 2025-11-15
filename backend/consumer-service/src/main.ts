@@ -26,7 +26,7 @@ async function bootstrap() {
 
   while (!started && attempts < maxAttempts) {
     try {
-      await app.listen(port);
+      await app.listen(port, '0.0.0.0');
       started = true;
       console.log("✅ Consumer Service đang lắng nghe:");
       // console.log("  - Kafka: "); // ❌ ĐÃ XÓA
