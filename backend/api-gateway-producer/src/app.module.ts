@@ -26,6 +26,12 @@ import { ProducersModule } from './producers/producers.module';
 
       // Tự động tạo/cập nhật bảng. Chỉ dùng cho development!
       synchronize: true,
+      ssl: true,
+      extra: {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      },
     }),
 
     // --- 2. Cấu hình Bull (Redis Queue) ---
