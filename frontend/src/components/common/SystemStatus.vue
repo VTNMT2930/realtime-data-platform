@@ -424,7 +424,7 @@ export default {
     },
     async checkProducerService() {
       try {
-        const response = await axios.get("http://localhost:3000/api", {
+        const response = await axios.get("https://bxiuaztdmu.ap-southeast-2.awsapprunner.com/api", {
           timeout: 3000,
         });
         this.producerStatus = response.status === 200 ? "online" : "offline";
@@ -434,7 +434,7 @@ export default {
     },
     async checkConsumerService() {
       try {
-        const response = await axios.get("http://localhost:3001/api/consumers/stats", {
+        const response = await axios.get("https://bxiuaztdmu.ap-southeast-2.awsapprunner.com/api", {
           timeout: 3000,
         });
         this.consumerStatus = response.status === 200 ? "online" : "offline";
@@ -445,7 +445,7 @@ export default {
     async checkKafkaStatus() {
       try {
         // Check Kafka thông qua Producer Service
-        const response = await axios.get("http://localhost:3000/api/admin/topics", {
+        const response = await axios.get("https://bxiuaztdmu.ap-southeast-2.awsapprunner.com/api", {
           timeout: 3000,
         });
         this.kafkaStatus = response.data.status === "success" ? "connected" : "disconnected";

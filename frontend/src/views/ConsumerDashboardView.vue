@@ -543,7 +543,7 @@ export default {
 			console.log("🔌 Initializing WebSocket connection...");
 
 			// Kết nối đến Consumer Service (Port 3001)
-			this.socket = io("http://localhost:3001", {
+			this.socket = io("https://un3yfhxmgj.ap-southeast-2.awsapprunner.com/api", {
 				transports: ["websocket", "polling"], // Ưu tiên websocket
 				reconnection: true,
 				reconnectionDelay: 1000,

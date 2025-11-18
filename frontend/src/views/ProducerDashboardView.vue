@@ -600,7 +600,7 @@ export default {
       console.log("🔌 [Producer] Initializing WebSocket connection...");
 
       // Kết nối đến Producer Service (Port 3000)
-      this.socket = io("http://localhost:3000", {
+      this.socket = io("https://bxiuaztdmu.ap-southeast-2.awsapprunner.com", {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionDelay: 1000,
@@ -746,7 +746,7 @@ export default {
 
     async getProducerLogById(logId) {
       try {
-        const response = await fetch(`http://localhost:3000/api/producers/logs/${logId}`);
+        const response = await fetch(`https://bxiuaztdmu.ap-southeast-2.awsapprunner.com/api/producers/logs/${logId}`);
         const data = await response.json();
         
         if (data.success && data.data) {

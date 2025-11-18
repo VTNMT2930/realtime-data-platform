@@ -1,6 +1,6 @@
 // Backend NestJS chạy ở 2 ports khác nhau
-const PRODUCER_API_BASE_URL = "https://13.54.157.222:3000/api";
-const CONSUMER_API_BASE_URL = "https://13.54.157.222:3001/api";
+const PRODUCER_API_BASE_URL = "https://bxiuaztdmu.ap-southeast-2.awsapprunner.com/api";
+const CONSUMER_API_BASE_URL = "https://un3yfhxmgj.ap-southeast-2.awsapprunner.com/api";
 
 /**
  * Hàm gọi API chung (dùng fetch)
