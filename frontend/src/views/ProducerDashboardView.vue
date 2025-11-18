@@ -601,7 +601,7 @@ export default {
 
       // Kết nối đến Producer Service (Port 3000)
       this.socket = io("https://bxiuaztdmu.ap-southeast-2.awsapprunner.com", {
-        transports: ["websocket", "polling"],
+        transports: ["polling"],
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,

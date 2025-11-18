@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 
+@Global()
 @Module({
   imports: [
     // Đăng ký client để kết nối Kafka
@@ -10,7 +11,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
+            brokers: [process.env.KAFKA_BROKERS || ''],
             ssl: true,
             sasl: {
               mechanism: 'scram-sha-256',

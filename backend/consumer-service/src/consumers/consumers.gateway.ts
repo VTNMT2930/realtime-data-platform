@@ -13,6 +13,7 @@ import { Logger } from "@nestjs/common";
 		origin: "*", // Trong production, hãy cấu hình cụ thể domain của frontend
 		credentials: true,
 	},
+	transports: ['polling'],
 })
 export class ConsumersGateway
 	implements OnGatewayConnection, OnGatewayDisconnect

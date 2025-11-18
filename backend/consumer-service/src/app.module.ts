@@ -17,7 +17,7 @@ import { ConsumerInstance } from "./consumers/entities/consumer-instance.entity"
 			port: parseInt(process.env.DB_PORT || "5433"),
 			username: process.env.DB_USERNAME || "admin",
 			password: process.env.DB_PASSWORD || "admin",
-			database: process.env.DB_PRODUCER_NAME || "consumer_logs",
+			database: process.env.DB_CONSUMER_NAME || "consumer_logs",
 			entities: [ConsumerLog, ConsumerInstance],
 			synchronize: true, // Tự động tạo/cập nhật schema (chỉ dùng trong dev)
 			ssl: true,

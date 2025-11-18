@@ -45,12 +45,14 @@ export class AdminService implements OnModuleInit, OnModuleDestroy {
 
   // Khởi tạo WebSocket connection đến Consumer Service
   private initializeConsumerServiceSocket() {
-    const consumerServiceUrl = process.env.CONSUMER_SERVICE_URL || '';
+    const consumerServiceUrl =
+      process.env.CONSUMER_SERVICE_URL ||
+      'https://un3yfhxmgj.ap-southeast-2.awsapprunner.com';
 
     console.log('[Admin] Connecting to Consumer Service WebSocket...');
 
     this.consumerServiceSocket = io(consumerServiceUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
