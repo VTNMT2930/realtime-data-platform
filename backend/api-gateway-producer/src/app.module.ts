@@ -9,6 +9,8 @@ import { AppService } from './app.service';
 import { KafkaModule } from './kafka/kafka.module';
 import { AdminModule } from './admin/admin.module';
 import { ProducersModule } from './producers/producers.module';
+import { KafkaHealthService } from './kafka/kafka-health.service';
+import { HealthController } from './kafka/kafka-health.controller';
 
 @Module({
   imports: [
@@ -47,7 +49,7 @@ import { ProducersModule } from './producers/producers.module';
     KafkaModule,
     AdminModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, HealthController],
+  providers: [AppService, KafkaHealthService],
 })
 export class AppModule {}
