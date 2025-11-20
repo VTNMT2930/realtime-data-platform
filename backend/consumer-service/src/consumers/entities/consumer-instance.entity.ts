@@ -44,6 +44,10 @@ export class ConsumerInstance {
 
 	@Column({ type: "boolean", default: false })
 	isDeleted: boolean; // Flag để đánh dấu consumer đã bị xóa (soft delete)
+    
+    // ✅ FIX CUỐI CÙNG: THÊM GROUP ID VÀO ENTITY
+    @Column({ type: "varchar", length: 255, nullable: true })
+    groupId: string; // Tên nhóm Kafka Consumer Group
 
 	@CreateDateColumn()
 	createdAt: Date;

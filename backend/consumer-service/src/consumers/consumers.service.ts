@@ -11,7 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import * as os from "os";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { ConsumersGateway } from "./consumers.gateway";
+
 import { Kafka, Consumer as KafkaJsConsumer } from "kafkajs";
 
 // Định nghĩa interface cho metadata để code "sạch" hơn
@@ -35,8 +35,6 @@ export class ConsumersService {
   // ✅ Timeout cho heartbeat (30 giây - cho phép 6 lần heartbeat miss)
   // Heartbeat mỗi 5s → 30s = 6 cycles → đủ buffer cho resume và network issues
   private static readonly HEARTBEAT_TIMEOUT = 15000;
-  // ❌ Không dùng static Set nữa, sử dụng database thay thế
-  // private static deletedConsumerIds = new Set<string>();
   // Flag để track nếu consumer này đã bị stop thủ công
   private isManuallyStoppedFlag = false;
 
@@ -47,8 +45,8 @@ export class ConsumersService {
     private readonly consumerLogRepository: Repository<ConsumerLog>,
     @InjectRepository(ConsumerInstance)
     private readonly consumerInstanceRepository: Repository<ConsumerInstance>,
-    private readonly configService: ConfigService,
-    private readonly consumersGateway: ConsumersGateway
+    private readonly configService: ConfigService
+ 
   ) {
     this.consumerInstanceId =
       this.configService.get<string>("CONSUMER_ID") || os.hostname();
@@ -79,6 +77,34 @@ export class ConsumersService {
       this.cleanupStaleConsumers();
     }, 10000);
   }
+  
+  // ✅ HÀM MỚI (THÊM CHO CONTROLLER)
+  async createConsumerInstanceEntry(topicName: string, groupId?: string) {
+    const newConsumerId = `consumer-${Date.now()}`; 
+    
+    await this.allowConsumerRecreation(newConsumerId);
+
+    const instance = this.consumerInstanceRepository.create({
+        id: newConsumerId,
+        status: ConsumerInstanceStatus.ACTIVE,
+        hostname: os.hostname(),
+        port: parseInt(this.configService.get<string>("PORT") || "3001"),
+        pid: process.pid,
+        topicName: topicName,
+        lastHeartbeat: new Date(),
+        shouldStop: false,
+        isDeleted: false,
+        groupId: groupId || this.configService.get<string>("KAFKA_GROUP_ID") || "platform-consumer-group",
+    });
+    await this.consumerInstanceRepository.save(instance);
+    
+    return {
+        success: true,
+        message: `Consumer instance record created for ${newConsumerId}.`,
+        consumerId: newConsumerId
+    };
+  }
+
 
   // ✅ Subscribe to specific Kafka topic (KafkaJS thực sự)
   private async subscribeToTopic(topicName: string) {
@@ -251,8 +277,6 @@ export class ConsumersService {
               shouldStop: false,
             }
           );
-
-          this.consumersGateway.broadcastConsumerStopped(consumer.id);
 
           // Nếu là consumer hiện tại, set flag
           if (consumer.id === this.consumerInstanceId) {
@@ -453,22 +477,13 @@ export class ConsumersService {
 
       console.log(`[Consumer] Đã lưu log ${consumerLog.id}. Bắt đầu xử lý...`);
 
-      // 🔌 WebSocket: Broadcast message received với đầy đủ thông tin
-      this.consumersGateway.broadcastMessageReceived(logId, {
-        ...metadata,
-        topic: kafkaMetadata?.topic,
-        partition: kafkaMetadata?.partition,
-        offset: kafkaMetadata?.offset,
-        timestamp: kafkaMetadata?.timestamp,
-      });
+
 
       // 2. CẬP NHẬT TRẠNG THÁI (PROCESSING)
       await this.consumerLogRepository.update(consumerLog.id, {
         status: ConsumerLogStatus.PROCESSING,
       });
 
-      // 🔌 WebSocket: Broadcast processing started
-      this.consumersGateway.broadcastProcessingStarted(logId);
 
       // 3. GIẢ LẬP XỬ LÝ CÔNG VIỆC
       const recordCount = metadata.rowCount || 1;
@@ -481,26 +496,13 @@ export class ConsumersService {
         status: ConsumerLogStatus.PROCESSED,
       });
 
-      // 🔌 WebSocket: Broadcast processing completed
-      this.consumersGateway.broadcastProcessingCompleted(
-        logId,
-        this.consumerInstanceId
-      );
 
-      // 🔌 WebSocket: Broadcast updated stats
-      const stats = await this.getConsumerStats();
-      this.consumersGateway.broadcastStats(stats);
-    } catch (error) {
+
+    } catch (error: any) {
       // 5. XỬ LÝ THẤT BẠI
       const errorMessage = error.response?.data?.message || error.message;
       console.error(`[Consumer] ❌ Xử lý log thất bại:`, errorMessage);
 
-      // 🔌 WebSocket: Broadcast processing failed
-      this.consumersGateway.broadcastProcessingFailed(logId, errorMessage);
-
-      // 🔌 WebSocket: Broadcast updated stats
-      const stats = await this.getConsumerStats();
-      this.consumersGateway.broadcastStats(stats);
 
       // Logic 'catch' của bạn đã rất tốt,
       // nó kiểm tra xem 'consumerLog' đã kịp tạo hay chưa
@@ -896,13 +898,9 @@ export class ConsumersService {
         this.heartbeat();
       });
 
-      console.log(`[Consumer] ✅ Đã resume consumer instance: ${consumerId}`); // Broadcast consumer resumed event
-      this.consumersGateway.broadcastConsumerResumed(consumerId);
-
-      // Broadcast updated stats
+      console.log(`[Consumer] ✅ Đã resume consumer instance: ${consumerId}`); 
       const stats = await this.getConsumerStats();
-      this.consumersGateway.broadcastStats(stats);
-
+  
       return {
         success: true,
         message: `Consumer ${consumerId} đã được resume thành công`,
@@ -977,12 +975,9 @@ export class ConsumersService {
         );
       }
 
-      console.log(`[Consumer] ⏸️ Đã stop consumer instance: ${consumerId}`); // Broadcast consumer stopped event
-      this.consumersGateway.broadcastConsumerStopped(consumerId);
-
-      // Broadcast updated stats
+      console.log(`[Consumer] ⏸️ Đã stop consumer instance: ${consumerId}`);
       const stats = await this.getConsumerStats();
-      this.consumersGateway.broadcastStats(stats);
+
 
       return {
         success: true,
@@ -1055,30 +1050,40 @@ export class ConsumersService {
           // Sử dụng taskkill trên Windows
           const execAsync = promisify(exec);
           try {
-            await execAsync(`taskkill /PID ${instance.pid} /F`);
+            // Dòng này có thể thất bại nếu chạy trên hệ điều hành khác Windows, nhưng ta cứ thử
+            await execAsync(`taskkill /PID ${instance.pid} /F`); 
             console.log(
               `[Consumer] ✅ Successfully killed PID ${instance.pid}`
             );
-          } catch (execError) {
-            console.error(
-              `[Consumer] ❌ Error killing PID ${instance.pid}:`,
-              execError.message
-            );
+          } catch (execError: any) {
+            // Thử lệnh kill cho Linux/macOS
+            try {
+              await execAsync(`kill -9 ${instance.pid}`);
+              console.log(
+                `[Consumer] ✅ Successfully killed PID ${instance.pid} (Linux/macOS)`
+              );
+            } catch (killError: any) {
+              console.error(
+                `[Consumer] ❌ Error killing PID ${instance.pid} on both platforms:`,
+                killError.message
+              );
+            }
           }
-        } catch (killError) {
+        } catch (killError: any) {
           console.error(
-            `[Consumer] ❌ Failed to kill process:`,
+            `[Consumer] ❌ Failed to execute kill command:`,
             killError.message
           );
         }
       }
 
-      // ✅ BƯỚC 5: Broadcast delete event để UI cập nhật ngay
-      this.consumersGateway.broadcastConsumerDeleted(consumerId);
 
-      // ✅ BƯỚC 6: Đợi một chút để đảm bảo process đã stop
+
+      // ✅ BƯỚC 5: Đợi một chút để đảm bảo process đã stop
       console.log(`[Consumer] ⏳ Waiting for cleanup...`);
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // ✅ BƯỚC 6: Xóa consumer khỏi database
+      await new Promise((resolve) => setTimeout(resolve, 2000)); 
+      
+      // ✅ BƯỚC 6: Xóa consumer khỏi database
       const result = await this.consumerInstanceRepository.delete({
         id: consumerId,
       });
@@ -1092,12 +1097,6 @@ export class ConsumersService {
 
       console.log(`[Consumer] ✅ Đã xóa consumer instance: ${consumerId}`);
 
-      // Broadcast consumer deleted event
-      this.consumersGateway.broadcastConsumerDeleted(consumerId);
-
-      // Broadcast updated stats
-      const stats = await this.getConsumerStats();
-      this.consumersGateway.broadcastStats(stats);
 
       return {
         success: true,
