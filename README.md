@@ -1,93 +1,134 @@
-# realtime-data-platform
+# Realtime Data Platform
 
+This repository implements a simple realtime data platform for producing and consuming Kafka messages with persistence and monitoring. It contains two main backend services and a Vue frontend:
 
+- `backend/api-gateway-producer` — NestJS service that provides producer APIs, Admin endpoints, file upload worker (BullMQ), WebSocket gateway and TypeORM entities for producer logs.
+- `backend/consumer-service` — NestJS service that runs Kafka consumers (kafkajs), persists consumer logs & manages consumer instances.
+- `frontend` — Vue 3 + Vite single-page app used as UI and control panel.
 
-## Getting started
+See `REPORT.md` for a complete automated analysis of code structure, database schema, API endpoints and recommended improvements.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Quickstart (developer)
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Prerequisites
+- Node.js (>=18)
+- npm (or pnpm/yarn)
+- PostgreSQL (or compatible) for TypeORM
+- Redis (for BullMQ)
+- Kafka / Redpanda for message broker
 
-## Add your files
+The project contains a `docker-compose.yml` (root) which can be used to bring up Kafka/Redpanda, Postgres and Redis for local development. Adjust environment values as needed.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Recommended workflow (PowerShell commands)
 
+1) From repository root, install dependencies for each service:
+
+```powershell
+cd backend/api-gateway-producer; npm install; cd ../../consumer-service; npm install; cd ..\..\frontend; npm install; cd ..\..
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/group-1-kafka/realtime-data-platform.git
-git branch -M main
-git push -uf origin main
+
+2) Run services individually (development)
+
+Start producer API (api-gateway-producer):
+```powershell
+cd backend/api-gateway-producer
+npm run start:dev
 ```
 
-## Integrate with your tools
+Start consumer-service (consumer-service):
+```powershell
+cd backend/consumer-service
+npm run start:dev
+```
 
-- [ ] [Set up project integrations](https://gitlab.com/group-1-kafka/realtime-data-platform/-/settings/integrations)
+Start frontend (dev server):
+```powershell
+cd frontend
+npm run dev
+```
 
-## Collaborate with your team
+3) Using Docker Compose (recommended for local integration)
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+If you prefer containers, start infrastructure services (Postgres, Redis, Kafka) via docker-compose:
 
-## Test and Deploy
+```powershell
+docker-compose up -d
+```
 
-Use the built-in continuous integration in GitLab.
+After infra is up, start the backend services as above (or create container images / compose overrides to run them inside Docker).
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Environment variables (important)
 
-***
+Common env vars used by services (check `app.module.ts` and `consumers.module.ts` for exact usage):
 
-# Editing this README
+- `DATABASE_URL` or TypeORM-specific settings: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` — PostgreSQL connection
+- `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` — Redis used by BullMQ
+- `KAFKA_BROKERS` — comma-separated list of Kafka brokers (e.g. `localhost:9092`)
+- `KAFKA_GROUP_ID`, `KAFKA_CLIENT_ID` — Kafka client/group IDs
+- `PORT` — service port override
+- `CONSUMER_ID`, `KAFKA_TOPIC_NAME` — consumer instance settings for `consumer-service`
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Check each service `src/app.module.ts` for how `TypeOrmModule.forRoot()` and `ConfigModule` read env values.
 
-## Suggestions for a good README
+## Database
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+The project uses TypeORM (`typeorm` + `pg`). Entities present (in code) create these tables:
 
-## Name
-Choose a self-explaining name for your project.
+- `producer_logs` — producer log summaries, batch logs, statuses
+- `consumer_logs` — per-consumer persisted messages and metadata
+- `consumer_instances` — runtime tracking of consumer instances and heartbeats
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Note: explicit TypeORM migration files were not found in the repository. For production use, add migrations or export schema definitions. Using TypeORM `synchronize: true` in production is not recommended.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## APIs (short summary)
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Producer service (base path `/api/producers`):
+- `POST /api/producers/send/single` — send a single message to Kafka (query `topic` optional)
+- `POST /api/producers/upload/csv` — upload CSV file (FormData `file`) to be processed in batches
+- `GET /api/producers/logs` — list logs (filter by `topic`, `type`, pagination)
+- `GET /api/producers/logs/:id` — get log by id
+- `GET /api/producers/uploads` — file upload summaries
+- `GET /api/producers/statistics` — producer statistics
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Admin (base path `/api/admin`):
+- `POST /api/admin/topics` — create topic
+- `GET /api/admin/topics` — list topics
+- `GET /api/admin/topics/:topicName` — topic details
+- `DELETE /api/admin/topics/:topicName` — delete topic
+- `PATCH /api/admin/topics/:topicName` — update topic
+- `POST /api/admin/consumers` — spawn consumer (dev: spawn local process; prod: call consumer-service)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Consumer service (base path `/api/consumers`):
+- `POST /api/consumers/instances` — create consumer instance record
+- `GET /api/consumers/logs` — list consumer logs
+- `GET /api/consumers/logs/:id` — get consumer log
+- `GET /api/consumers/logs/search/:originalLogId` — find by producer log id
+- `GET /api/consumers/stats` & `/api/consumers/stats/detailed` — stats
+- `GET /api/consumers/instances` — list instances; `PUT /instances/:id/resume`, `PUT /instances/:id/stop`, `DELETE /instances/:id`
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Note: The frontend `frontend/src/services/apiService.js` references two producer endpoints (`PATCH /api/producers/logs/:id/consumed` and `PATCH /api/producers/logs/:id/consume-failed`) that are not present in backend controllers as of this repo snapshot. Either implement those endpoints or remove the UI references.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Worker / Queue
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+- CSV processing is done via BullMQ (`bullmq`) and requires Redis. Jobs are enqueued in the producer controller and processed by a `@Process('process-csv-job')` worker.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## WebSocket
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+- The producer API broadcasts log-created and log-updated events through a Socket.IO gateway. The frontend listens to these events for realtime updates.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Troubleshooting & notes
 
-## License
-For open source projects, say how it is licensed.
+- If DB tables are missing, check TypeORM configuration. Consider generating migrations and running them before starting services.
+- Ensure Kafka and Redis are reachable by the services (check `KAFKA_BROKERS` and `REDIS_HOST`).
+- Admin spawn consumer in dev uses `npm run start:dev` in `consumer-service` — this requires Node and dependencies installed in that folder.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## Contributing & next actions
+
+- See `REPORT.md` for the automated code analysis, database table definitions and recommended improvements.
+- Recommended enhancements: add migrations, Swagger/OpenAPI generation, add missing producer PATCH endpoints or remove UI references, add auth for admin endpoints, add input validation & upload size limits.
+
+---
+Generated by repository analysis. If you want, I can also:
+- implement the missing PATCH endpoints for producer logs,
+- add a TypeORM migration skeleton,
+- or generate Swagger docs from the NestJS controllers.
